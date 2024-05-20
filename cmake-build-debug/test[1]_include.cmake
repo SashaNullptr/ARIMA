@@ -1,5 +1,0 @@
-if(EXISTS "/home/alex/CLionProjects/arima/cmake-build-debug/test[1]_tests.cmake")
-  include("/home/alex/CLionProjects/arima/cmake-build-debug/test[1]_tests.cmake")
-else()
-  add_test(test_NOT_BUILT test_NOT_BUILT)
-endif()
