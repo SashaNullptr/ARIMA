@@ -1,0 +1,24 @@
+# ninja log v5
+3737	3754	1716184778222050287	lib/libgmock.a	c92fefb3da88ade1
+2	1573	1716184776042053283	_deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o	4322bc1a1588f7b1
+3699	3737	1716184778202050315	lib/libgtest.a	50f6df1e848199f8
+1	224	1716178492129401139	CMakeFiles/arima.dir/library.cpp.o	e0ad74d53fb604ee
+2	127	1716184906149674634	tests/multiply_test	ba87506dcdfd7de9
+1	180	1716197200787746062	build.ninja	cbc0077b6f2a3337
+231	235	1716183590254506626	libarima.a	d78cb147f7e8d711
+2	230	1716184946717482009	src/CMakeFiles/arima.dir/arima.cpp.o	d5584f706440975
+1	2385	1716184776850052186	_deps/googletest-build/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o	2a4d71596197dd2a
+1	908	1716181847434264840	CMakeFiles/arima.dir/tests/test.cpp.o	126fbdd9f70b8ca3
+3754	3759	1716184778226050281	lib/libgmock_main.a	3fb40eb701bb7a85
+2	3699	1716184778162050371	_deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o	b31ae8a44f1349ae
+1	231	1716183590246506720	CMakeFiles/arima.dir/src/arima.cpp.o	950f5ca03dc5d26b
+2	896	1716184833585934167	tests/CMakeFiles/multiply_test.dir/multiply.cpp.o	7ee767ed447324f7
+1	1007	1716184775474054040	tests/CMakeFiles/multiply_test.dir/test.cpp.o	7a64b7ba6c57af4
+3738	3742	1716184778210050304	lib/libgtest_main.a	de4d71311d9432f3
+2	1003	1716184775470054045	_deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o	6a8d9273ae124e49
+230	234	1716184946725481968	src/libarima.a	9121ec6fd9fe6103
+1	188	1716197200787746062	build.ninja	cbc0077b6f2a3337
+2	304	1716197201099737901	src/CMakeFiles/arima.dir/arima.cpp.o	d5584f706440975
+304	309	1716197201103737795	src/libarima.a	9121ec6fd9fe6103
+3	905	1716197201699722210	tests/CMakeFiles/simple_test.dir/simple_test.cpp.o	ca63d5055c0841f3
+905	1027	1716197201819719071	tests/simple_test	37195b8fe493d751
