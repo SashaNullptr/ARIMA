@@ -1,108 +1,204 @@
 #ifndef ARIMA_STATE_SPACE_EIGEN_H
 #define ARIMA_STATE_SPACE_EIGEN_H
 
-
+#include <Eigen/Dense>
+#include <unsupported/Eigen/NonLinearOptimization>
+#include <unsupported/Eigen/NumericalDiff>
 #include <iostream>
 #include <vector>
-#include <Eigen/Dense>
+#include <cmath>
+#include <limits>
+#include <functional>
 
-using namespace Eigen;
-
-class ARIMA {
+// Define ARIMA model class
+class ARIMAModel {
 public:
-    ARIMA(int p, int d, int q) : p(p), d(d), q(q) {
-        // Initialize state-space matrices
-        F = MatrixXd::Zero(p, p);
-        for (int i = 1; i < p; ++i) {
-            F(i, i - 1) = 1.0;
-        }
-        H = VectorXd::Zero(p);
-        H(0) = 1.0;
-        Q = MatrixXd::Identity(p, p);
-        R = MatrixXd::Identity(1, 1);
-    }
+    ARIMAModel(int p, int d, int q) : p(p), d(d), q(q) {}
 
-    void fit(const std::vector<vector>& data) {
-        int n = data.size();
-        VectorXd Y = VectorXd::Map(data.data(), n);
+    // Fit the model to data using EM algorithm
+    void fit(std::vector<double> data, int maxIter = 100, double tol = 1e-6);
 
-        // Difference the data if d > 0
-        if (d > 0) {
-            Y = difference(Y, d);
-        }
-
-        VectorXd x = VectorXd::Zero(p);
-        MatrixXd P = MatrixXd::Identity(p, p);
-
-        for (int t = 0; t < n; ++t) {
-            VectorXd x_pred = F * x;
-            MatrixXd P_pred = F * P * F.transpose() + Q;
-
-            VectorXd y = Y.segment(t, 1);
-            VectorXd y_pred = H.transpose() * x_pred;
-            VectorXd e = y - y_pred;
-            MatrixXd S = H.transpose() * P_pred * H + R;
-            MatrixXd K = P_pred * H * S.inverse();
-
-            x = x_pred + K * e;
-            P = P_pred - K * H.transpose() * P_pred;
-
-            estimated_states.push_back(x);
-            estimated_covariances.push_back(P);
-        }
-    }
-
-    std::vector<vector> forecast(int steps) {
-        std::vector<vector> forecasts;
-
-        VectorXd x = estimated_states.back();
-        MatrixXd P = estimated_covariances.back();
-
-        for (int i = 0; i < steps; ++i) {
-            x = F * x;
-            P = F * P * F.transpose() + Q;
-            forecasts.push_back(x(0));
-        }
-
-        return forecasts;
-    }
+    // Forecast the next values
+    std::vector<double> forecast(int steps);
 
 private:
     int p, d, q;
-    MatrixXd F, Q, R;
-    VectorXd H;
-    vector<VectorXd> estimated_states;
-    vector<MatrixXd> estimated_covariances;
+    Eigen::VectorXd arParams; // AR coefficients
+    Eigen::VectorXd maParams; // MA coefficients
+    double sigma2; // Variance of residuals
 
-    VectorXd difference(const VectorXd& data, int d) {
-        VectorXd diff = data;
-        for (int i = 0; i < d; ++i) {
-            diff = diff.tail(diff.size() - 1) - diff.head(diff.size() - 1);
-        }
-        return diff;
-    }
+    // Log-likelihood function
+    double logLikelihood(const Eigen::VectorXd& params);
+
+    // Interpolate missing values in data
+    void interpolateMissingValues(std::vector<double>& data);
+
+    std::vector<double> data; // Store the data
 };
 
-//int main() {
-//    std::vector<vector> data = { /* your time series data */ };
-//
-//    int p = 1;
-//    int d = 1;
-//    int q = 1;
-//
-//    ARIMA model(p, d, q);
-//    model.fit(data);
-//
-//    int forecast_steps = 10;
-//    std::vector<vector> forecasts = model.forecast(forecast_steps);
-//
-//    cout << "Forecasts: ";
-//    for (double f : forecasts) {
-//        cout << f << " ";
-//    }
-//    cout << endl;
-//
-//    return 0;
-//}
+// Define the log-likelihood function
+double ARIMAModel::logLikelihood(const Eigen::VectorXd& params) {
+    int n = data.size();
+    int maxPQ = std::max(p, q);
+    Eigen::VectorXd residuals(n);
+    residuals.setZero();
+
+    // Extract parameters
+    arParams = params.segment(0, p);
+    maParams = params.segment(p, q);
+    sigma2 = params(p + q);
+
+    // Compute residuals
+    for (int t = maxPQ; t < n; ++t) {
+        double predicted = 0.0;
+        for (int i = 0; i < p; ++i) {
+            predicted += arParams(i) * data[t - i - 1];
+        }
+        for (int j = 0; j < q; ++j) {
+            predicted += maParams(j) * residuals[t - j - 1];
+        }
+        residuals[t] = data[t] - predicted;
+    }
+
+    // Compute log-likelihood
+    double logL = -0.5 * n * std::log(2 * M_PI * sigma2);
+    logL -= (residuals.array().square().sum()) / (2 * sigma2);
+    return logL;
+}
+
+// Interpolate missing values in data
+void ARIMAModel::interpolateMissingValues(std::vector<double>& data) {
+    int n = data.size();
+    int start = -1;
+    for (int i = 0; i < n; ++i) {
+        if (std::isnan(data[i])) {
+            if (start == -1) {
+                start = i;
+            }
+        } else if (start != -1) {
+            int end = i;
+            double step = (data[end] - data[start - 1]) / (end - start + 1);
+            for (int j = start; j < end; ++j) {
+                data[j] = data[start - 1] + step * (j - start + 1);
+            }
+            start = -1;
+        }
+    }
+}
+
+// Fit the ARIMA model to data using EM algorithm
+void ARIMAModel::fit(std::vector<double> data, int maxIter, double tol) {
+    this->data = data;
+    interpolateMissingValues(this->data);
+
+    int n = data.size();
+    int maxPQ = std::max(p, q);
+
+    // Initial parameter guess
+    Eigen::VectorXd params(p + q + 1);
+    params.setZero();
+    params(p + q) = 1.0; // Initial guess for sigma2
+
+    Eigen::VectorXd oldParams = params;
+    double logL = logLikelihood(params);
+
+    for (int iter = 0; iter < maxIter; ++iter) {
+        // E-step: Compute residuals and their variances
+        Eigen::VectorXd residuals(n);
+        residuals.setZero();
+        for (int t = maxPQ; t < n; ++t) {
+            if (std::isnan(data[t])) {
+                continue;
+            }
+            double predicted = 0.0;
+            for (int i = 0; i < p; ++i) {
+                if (t - i - 1 >= 0 && !std::isnan(data[t - i - 1])) {
+                    predicted += arParams(i) * data[t - i - 1];
+                }
+            }
+            for (int j = 0; j < q; ++j) {
+                if (t - j - 1 >= 0 && !std::isnan(residuals[t - j - 1])) {
+                    predicted += maParams(j) * residuals[t - j - 1];
+                }
+            }
+            residuals[t] = data[t] - predicted;
+        }
+
+        // M-step: Update AR and MA parameters and sigma2
+        Eigen::MatrixXd X(n - maxPQ, p + q);
+        for (int t = maxPQ; t < n; ++t) {
+            if (std::isnan(data[t])) {
+                continue;
+            }
+            for (int i = 0; i < p; ++i) {
+                if (t - i - 1 >= 0) {
+                    X(t - maxPQ, i) = data[t - i - 1];
+                }
+            }
+            for (int j = 0; j < q; ++j) {
+                if (t - j - 1 >= 0) {
+                    X(t - maxPQ, p + j) = residuals[t - j - 1];
+                }
+            }
+        }
+
+        Eigen::VectorXd y = Eigen::Map<Eigen::VectorXd>(data.data() + maxPQ, n - maxPQ);
+        Eigen::VectorXd beta = (X.transpose() * X).ldlt().solve(X.transpose() * y);
+        params.segment(0, p + q) = beta;
+
+        double sigma2New = (residuals.segment(maxPQ, n - maxPQ).array().square().sum()) / (n - maxPQ);
+        params(p + q) = sigma2New;
+
+        // Check for convergence
+        double newLogL = logLikelihood(params);
+        if (std::abs(newLogL - logL) < tol) {
+            break;
+        }
+
+        oldParams = params;
+        logL = newLogL;
+    }
+
+    // Update model parameters with final values
+    arParams = params.segment(0, p);
+    maParams = params.segment(p, q);
+    sigma2 = params(p + q);
+
+    std::cout << "Final parameters: " << params.transpose() << std::endl;
+}
+
+// Forecast future values, supporting missing data
+std::vector<double> ARIMAModel::forecast(int steps) {
+    std::vector<double> forecasts(steps, std::nan(""));
+
+    int n = data.size();
+    std::vector<double> dataCopy = data; // Create a copy of the data
+    interpolateMissingValues(dataCopy); // Ensure the copy has no missing values
+
+    for (int t = 0; t < steps; ++t) {
+        double predicted = 0.0;
+        int availableDataCount = 0;
+        for (int i = 0; i < p; ++i) {
+            if (n - 1 - i >= 0) {
+                predicted += arParams(i) * dataCopy[n - 1 - i];
+                availableDataCount++;
+            }
+        }
+        for (int j = 0; j < q && t - j - 1 >= 0; ++j) {
+            if (!std::isnan(forecasts[t - j - 1])) {
+                predicted += maParams(j) * forecasts[t - j - 1];
+                availableDataCount++;
+            }
+        }
+        if (availableDataCount > 0) {
+            forecasts[t] = predicted / availableDataCount;
+        } else {
+            forecasts[t] = dataCopy.back(); // Fallback to last observed value
+        }
+        dataCopy.push_back(forecasts[t]); // Append forecast to the copy of data
+    }
+
+    return forecasts;
+}
 
 #endif //ARIMA_STATE_SPACE_EIGEN_H
