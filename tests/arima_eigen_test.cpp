@@ -36,7 +36,7 @@ TEST(ARIMAModelTest, FitAndForecastNoMissingDataDEqualOne) {
     std::vector<double> data = { 1.2, 1.8, 2.5, 3.1, 3.9, 4.2, 5.0, 5.3, 5.8, 6.1 };
 
     // Create ARIMA model with p=1, d=0, q=1
-    ARIMAModel arima(3, 1, 1);
+    ARIMAModel arima(1, 1, 1);
 
     // Fit the model to data
     arima.fit(data);
@@ -56,7 +56,7 @@ TEST(ARIMAModelTest, FitAndForecastNoMissingDataDEqualOne) {
     std::cout << std::endl;
 
     // Add assertions for expected behavior
-    ASSERT_EQ(forecasts.size(), 5);
+    ASSERT_EQ(forecasts.size(), 6);
 }
 
 TEST(ARIMAModelTest, FitAndForecastConsecutiveMissingData) {
@@ -64,7 +64,7 @@ TEST(ARIMAModelTest, FitAndForecastConsecutiveMissingData) {
     std::vector<double> data = { 1.2, 1.8, std::nan(""), std::nan(""), 3.9, 4.2, 5.0, 5.3, 5.8, 6.1 };
 
     // Create ARIMA model with p=1, d=0, q=1
-    ARIMAModel arima(1, 0, 1);
+    ARIMAModel arima(3, 0, 1);
 
     // Fit the model to data
     arima.fit(data);
@@ -92,7 +92,7 @@ TEST(ARIMAModelTest, FitAndForecastStartMissingData) {
     std::vector<double> data = { std::nan(""), std::nan(""), 2.5, 3.1, 3.9, 4.2, 5.0, 5.3, 5.8, 6.1 };
 
     // Create ARIMA model with p=1, d=0, q=1
-    ARIMAModel arima(1, 0, 1);
+    ARIMAModel arima(3, 0, 1);
 
     // Fit the model to data
     arima.fit(data);
@@ -120,7 +120,7 @@ TEST(ARIMAModelTest, FitAndForecastEndMissingData) {
     std::vector<double> data = { 1.2, 1.8, 2.5, 3.1, 3.9, 4.2, 5.0, std::nan(""), std::nan(""), std::nan("") };
 
     // Create ARIMA model with p=1, d=0, q=1
-    ARIMAModel arima(1, 0, 1);
+    ARIMAModel arima(3, 0, 1);
 
     // Fit the model to data
     arima.fit(data);

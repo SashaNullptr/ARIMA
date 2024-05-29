@@ -33,6 +33,10 @@ private:
     // Interpolate missing values in data
     void interpolateMissingValues(std::vector<double>& data);
 
+    // Apply differencing
+    std::vector<double> difference(const std::vector<double>& data, int d);
+    std::vector<double> undifference(const std::vector<double>& differencedData, const std::vector<double>& originalData, int d);
+
     std::vector<double> data; // Store the data
 };
 
@@ -173,14 +177,17 @@ std::vector<double> ARIMAModel::forecast(int steps) {
 
     int n = data.size();
     std::vector<double> dataCopy = data; // Create a copy of the data
+
     interpolateMissingValues(dataCopy); // Ensure the copy has no missing values
+    // Apply differencing to data
+    std::vector<double> differencedData = difference(dataCopy, d);
 
     for (int t = 0; t < steps; ++t) {
         double predicted = 0.0;
         int availableDataCount = 0;
         for (int i = 0; i < p; ++i) {
             if (n - 1 - i >= 0) {
-                predicted += arParams(i) * dataCopy[n - 1 - i];
+                predicted += arParams(i) * differencedData[n - 1 - i];
                 availableDataCount++;
             }
         }
@@ -193,12 +200,42 @@ std::vector<double> ARIMAModel::forecast(int steps) {
         if (availableDataCount > 0) {
             forecasts[t] = predicted / availableDataCount;
         } else {
-            forecasts[t] = dataCopy.back(); // Fallback to last observed value
+            forecasts[t] = differencedData.back(); // Fallback to last observed value
         }
-        dataCopy.push_back(forecasts[t]); // Append forecast to the copy of data
+        differencedData.push_back(forecasts[t]); // Append forecast to the copy of data
     }
+
+    // Undo differencing to get the final forecasted values
+    forecasts = undifference(forecasts, data, d);
 
     return forecasts;
 }
+
+// Apply differencing to data
+std::vector<double> ARIMAModel::difference(const std::vector<double>& data, int d) {
+    std::vector<double> differencedData = data;
+    for (int i = 0; i < d; ++i) {
+        for (size_t j = differencedData.size() - 1; j > 0; --j) {
+            differencedData[j] = differencedData[j] - differencedData[j - 1];
+        }
+        differencedData.erase(differencedData.begin());
+    }
+    return differencedData;
+}
+
+// Undo differencing to get the forecasted values
+std::vector<double> ARIMAModel::undifference(const std::vector<double>& series, const std::vector<double>& original, int d) {
+    std::vector<double> rev = series;
+    for (int i = 0; i < d; ++i) {
+    std::vector<double> temp(rev.size() + 1);
+        temp[0] = original[original.size() - rev.size() - 1];
+        for (size_t j = 1; j < temp.size(); ++j) {
+            temp[j] = rev[j - 1] + temp[j - 1];
+        }
+        rev = temp;
+    }
+    return rev;
+}
+
 
 #endif //ARIMA_STATE_SPACE_EIGEN_H
